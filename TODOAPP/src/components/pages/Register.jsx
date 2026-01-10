@@ -39,6 +39,10 @@ export default function Register() {
         Register (dummy)
       </Typography>
 
+      <Alert severity="info">
+        Registration here is demo-only and stored locally. It does not create accounts usable by the DummyJSON auth endpoint ? to login use the demo credentials listed on the Login page.
+      </Alert>
+
       <Stack spacing={2} component="form" onSubmit={handleSubmit}>
         {auth.error && <Alert severity="error">{auth.error}</Alert>}
 

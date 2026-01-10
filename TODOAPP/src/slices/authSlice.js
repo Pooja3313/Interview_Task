@@ -1,33 +1,41 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../api/axios";
 
-// login using dummyjson auth endpoint
+// login using dummyjson auth endpoint - API-first (recommended)
 export const login = createAsyncThunk(
   "auth/login",
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      // First, check any locally registered users (demo-only, stored in localStorage)
-      const localUsers = JSON.parse(localStorage.getItem("localUsers") || "[]");
-      const found = localUsers.find(
-        (u) => u.username === username && u.password === password
-      );
-      if (found) {
-        // simulate dummyjson response shape
-        return {
-          accessToken: `local-${Date.now()}`,
-          id: found.id,
-          username: found.username,
-          email: found.email || "",
-          firstName: found.firstName || "",
-          lastName: found.lastName || "",
-        };
-      }
-
-      // Fallback to dummyjson auth endpoint for known demo users
+      // Try authenticating against DummyJSON first
       const res = await api.post("/auth/login", { username, password });
       return res.data;
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || "Login failed";
+      // If API fails with a client error (e.g. invalid credentials), fall back to locally-registered demo users
+      const status = err?.response?.status;
+      if (status && status < 500) {
+        const localUsers = JSON.parse(localStorage.getItem("localUsers") || "[]");
+        const found = localUsers.find(
+          (u) => u.username === username && u.password === password
+        );
+        if (found) {
+          return {
+            accessToken: `local-${Date.now()}`,
+            id: found.id,
+            username: found.username,
+            email: found.email || "",
+            firstName: found.firstName || "",
+            lastName: found.lastName || "",
+          };
+        }
+      }
+
+      // Otherwise prefer API-provided error details when available
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.response?.statusText ||
+        err.message ||
+        "Login failed";
       return rejectWithValue(msg);
     }
   }
@@ -89,9 +97,8 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (s, action) => {
         s.loading = false;
-        // dummyjson returns accessToken, id, username, email, firstName, lastName, etc.
-        s.token = action.payload?.accessToken || null;
-        // Store the entire payload as user (it contains all user info)
+        // DummyJSON may return either 'accessToken' or 'token' depending on the endpoint/version.
+        s.token = action.payload?.accessToken || action.payload?.token || null;
         s.user = {
           id: action.payload?.id,
           username: action.payload?.username,
@@ -99,8 +106,16 @@ const authSlice = createSlice({
           firstName: action.payload?.firstName,
           lastName: action.payload?.lastName,
         };
-        localStorage.setItem("token", s.token || "");
-        localStorage.setItem("user", JSON.stringify(s.user || {}));
+        if (s.token) {
+          localStorage.setItem("token", s.token);
+        } else {
+          localStorage.removeItem("token");
+        }
+        if (s.user && s.user.username) {
+          localStorage.setItem("user", JSON.stringify(s.user));
+        } else {
+          localStorage.removeItem("user");
+        }
       })
       .addCase(login.rejected, (s, action) => {
         s.loading = false;

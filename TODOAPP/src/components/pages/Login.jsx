@@ -60,15 +60,14 @@ export default function Login() {
         </Typography>
 
         <Alert severity="info">
-          <strong>Dummyjson test users (read-only API):</strong>
+          <strong>Demo credentials (login directly, registration not required):</strong>
           <br />
-          ? kminchelle / 0lelplR
+          ? emilys / emilyspass
           <br />
-          ? mkHz87 / X8@#A2k*
           <br />
-          ? user15 / usersarja
+          <strong>How registration works:</strong>
           <br />
-          Note: Registration doesn't create persistent accounts on dummyjson demo API
+          Registration in this app is demo-only and stored locally in your browser (localStorage). The app attempts API authentication first and will fall back to any locally-stored account only if the API does not recognize the credentials.
         </Alert>
       </Stack>
     </Paper>
